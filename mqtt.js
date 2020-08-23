@@ -113,6 +113,7 @@ function to_google(msg) {
 
     return {
         devices: {
+		456: {
             online: true,
             on: msg.state === 'ON',
             brightness: msg.brightness,
@@ -125,6 +126,7 @@ function to_google(msg) {
             //     }
         },
     }
+}
 }
 
 client.on('message', function (topic, message) {
