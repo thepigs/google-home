@@ -23,15 +23,27 @@ const rainbow = [[255, 0, 0], [255, 127, 0], [255, 255, 0], [0, 255, 0], [0, 0, 
 let cs_requests = []
 let colorLoop = null;
 let colorLoopIndex = 0;
+const STEPS = 10
 
-function colorLoopHandler(){
-    if (colorLoopIndex>=rainbow.length)
+
+function colorLoopHandler() {
+    if (colorLoopIndex >= rainbow.length * STEPS)
         colorLoopIndex = 0
-    let c = rainbow[colorLoopIndex++]
-    let col = (c[0]<<16)|(c[1]<<8)|c[2]
-    let payload = { color: rgb2xy(col) }
+    let index = Math.floor(colorLoopIndex / STEPS)
+    let stepIndex = colorLoopIndex % STEPS
+    let c = rainbow[index++]
+    if (index >= rainbow.length)
+        index = 0
+    let c2 = rainbow[index]
+    function lerp(idx) {
+        return c[idx] + (c2[idx]-c[idx])/STEPS*stepIndex
+    }
+    let col = (lerp(0) << 16) | (lerp(1) << 8) | lerp(2)
+    let payload = {color: rgb2xy(col)}
     client.publish(TOPIC + '/set', JSON.stringify(payload))
+    colorLoopIndex++
 }
+
 function get_current_state(resolve) {
     let d = new Promise(resolve => {
         cs_requests.push(resolve)
@@ -46,7 +58,16 @@ function execute_commands(commands) {
         for (let execution of command.execution) {
             let cmd = execution.command
             console.log(cmd)
-
+            if (cmd == 'action.devices.commands.ColorAbsolute') {
+                if (execution.params.color.name == 'antique white') {
+                    cmd = "action.devices.commands.ColorLoop"
+                } else {
+                    if (colorLoop != null) {
+                        clearTimeout(colorLoop)
+                        colorLoop = null
+                    }
+                }
+            }
             switch (cmd) {
                 case 'action.devices.commands.BrightnessAbsolute':
                     payload['brightness'] = execution.params.brightness
@@ -59,7 +80,7 @@ function execute_commands(commands) {
                     break
                 case "action.devices.commands.ColorLoop":
                     if (colorLoop == null) {
-                        colorLoop = setInterval(colorLoopHandler, 5000)
+                        colorLoop = setInterval(colorLoopHandler, 2000)
                     }
                     break
                 case "action.devices.commands.StopEffect":
@@ -71,7 +92,7 @@ function execute_commands(commands) {
             }
         }
     }
-    if (Object.keys(payload).length>0)
+    if (Object.keys(payload).length > 0)
         client.publish(TOPIC + '/set', JSON.stringify(payload))
 
 }
@@ -113,20 +134,20 @@ function to_google(msg) {
 
     return {
         devices: {
-		456: {
-            online: true,
-            on: msg.state === 'ON',
-            brightness: msg.brightness,
-            //     color: {
-            //         spectrumRGB: {
-            //             hue: msg.color.h,
-            //             saturation: msg.color.s,
-            //             value: msg.color.v
-            //         }
-            //     }
-        },
+            456: {
+                online: true,
+                on: msg.state === 'ON',
+                brightness: msg.brightness,
+                //     color: {
+                //         spectrumRGB: {
+                //             hue: msg.color.h,
+                //             saturation: msg.color.s,
+                //             value: msg.color.v
+                //         }
+                //     }
+            },
+        }
     }
-}
 }
 
 client.on('message', function (topic, message) {

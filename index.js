@@ -35,7 +35,8 @@ app.onSync((body, headers) => {
         requestId: body.requestId,
         payload: {
             agentUserId: "1836.15267389",
-            devices: [{
+            devices: [
+                {
                 id: "456",
                 type: "action.devices.types.LIGHT",
                 traits: [
@@ -43,8 +44,7 @@ app.onSync((body, headers) => {
                     "action.devices.traits.Brightness",
                     "action.devices.traits.ColorSetting",
                     "action.devices.traits.LightEffects",
-			"action.devices.traits.Toggles"
-                ],
+	            ],
                 name: {
                     //     defaultNames: ["lights out inc. bulb A19 color hyperglow"],
                     name: "Kitchen Light Bar",
@@ -55,13 +55,6 @@ app.onSync((body, headers) => {
                 attributes: {
                     colorModel: 'rgb',
                     supportedEffects: ['colorLoop'],
-			"availableToggles": [{
-    "name": "cool",
-  },
-  {
-    "name": "quiet",
-  }
-]
                 },
 
                 deviceInfo: {
@@ -70,7 +63,7 @@ app.onSync((body, headers) => {
                     hwVersion: "0",
                     swVersion: "0"
                 },
-            }
+            },
             ]
         }
     };
