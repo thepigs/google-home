@@ -41,7 +41,8 @@ app.onSync((body, headers) => {
                 traits: [
                     "action.devices.traits.OnOff",
                     "action.devices.traits.Brightness",
-                    "action.devices.traits.ColorSetting"
+                    "action.devices.traits.ColorSetting",
+                    "action.devices.traits.LightEffects"
                 ],
                 name: {
                     //     defaultNames: ["lights out inc. bulb A19 color hyperglow"],
@@ -52,6 +53,7 @@ app.onSync((body, headers) => {
                 roomHint: "Kitchen",
                 attributes: {
                     colorModel: 'rgb',
+                    supportedEffects: ['colorLoop']
                 },
                 deviceInfo: {
                     manufacturer: "gina",

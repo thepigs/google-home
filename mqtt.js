@@ -18,8 +18,20 @@ const TOPIC = 'zigbee2mqtt/kitchen_light_bar'
 //     }
 // };
 
-let cs_requests = []
+const rainbow = [[255, 0, 0], [255, 127, 0], [255, 255, 0], [0, 255, 0], [0, 0, 255], [46, 43, 95], [139, 0, 255]]
 
+let cs_requests = []
+let colorLoop = null;
+let colorLoopIndex = 0;
+
+function colorLoopHandler(){
+    if (colorLoopIndex>=rainbow.length)
+        colorLoopIndex = 0
+    let c = rainbow[colorLoopIndex++]
+    let col = (c[0]<<16)|(c[1]<<8)|c[2]
+    let payload = { color: rgb2xy(col) }
+    client.publish(TOPIC + '/set', JSON.stringify(payload))
+}
 function get_current_state(resolve) {
     let d = new Promise(resolve => {
         cs_requests.push(resolve)
@@ -45,10 +57,22 @@ function execute_commands(commands) {
                 case 'action.devices.commands.OnOff':
                     payload['state'] = execution.params.on ? 'ON' : 'OFF'
                     break
+                case "action.devices.commands.ColorLoop":
+                    if (colorLoop == null) {
+                        colorLoop = setInterval(colorLoopHandler, 5000)
+                    }
+                    break
+                case "action.devices.commands.StopEffect":
+                    if (colorLoop != null) {
+                        clearTimeout(colorLoop)
+                        colorLoop = null
+                    }
+                    break
             }
         }
     }
-    client.publish(TOPIC + '/set', JSON.stringify(payload))
+    if (Object.keys(payload).length>0)
+        client.publish(TOPIC + '/set', JSON.stringify(payload))
 
 }
 
@@ -71,10 +95,10 @@ client.on('connect', function () {
 //     }
 // }
 
-function rgb2xy(rgb){
+function rgb2xy(rgb) {
     let blue = rgb & 255
-    let green = (rgb>>8) & 255
-    let red = (rgb>>16) & 255
+    let green = (rgb >> 8) & 255
+    let red = (rgb >> 16) & 255
     let X = red * 0.649926 + green * 0.103455 + blue * 0.197109;
     let Y = red * 0.234327 + green * 0.743075 + blue * 0.022598;
     let Z = red * 0.0000000 + green * 0.053077 + blue * 1.035763;
@@ -82,7 +106,7 @@ function rgb2xy(rgb){
     let x = X / (X + Y + Z);
 
     let y = Y / (X + Y + Z);
-    return {x:x,y:y}
+    return {x: x, y: y}
 }
 
 function to_google(msg) {
@@ -92,13 +116,13 @@ function to_google(msg) {
             online: true,
             on: msg.state === 'ON',
             brightness: msg.brightness,
-        //     color: {
-        //         spectrumRGB: {
-        //             hue: msg.color.h,
-        //             saturation: msg.color.s,
-        //             value: msg.color.v
-        //         }
-        //     }
+            //     color: {
+            //         spectrumRGB: {
+            //             hue: msg.color.h,
+            //             saturation: msg.color.s,
+            //             value: msg.color.v
+            //         }
+            //     }
         },
     }
 }
