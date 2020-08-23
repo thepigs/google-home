@@ -10,10 +10,16 @@ const app = smarthome()
 
 app.onExecute((body, headers) => {
     console.log(body)
+    let responseCommands=[]
     for (let input of body.inputs){
-        execute_commands(input.payload.commands)
+        responseCommands.push(...execute_commands(input.payload.commands))
     }
-    return null
+    let d = {
+        requestId: body.requestId,
+        commands: responseCommands
+    }
+    console.log(JSON.stringify(d))
+    return d;
 })
 
 function makePayload(request,payload){

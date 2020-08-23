@@ -23,11 +23,11 @@ const rainbow = [[255, 0, 0], [255, 127, 0], [255, 255, 0], [0, 255, 0], [0, 0, 
 let cs_requests = []
 let colorLoop = null;
 let colorLoopIndex = 0;
-const STEPS = 10
+const STEPS = 15
 
 
 function colorLoopHandler() {
-    if (colorLoopIndex >= rainbow.length * STEPS)
+    if (colorLoopIndex >= (rainbow.length-1) * STEPS)
         colorLoopIndex = 0
     let index = Math.floor(colorLoopIndex / STEPS)
     let stepIndex = colorLoopIndex % STEPS
@@ -45,6 +45,7 @@ function colorLoopHandler() {
 }
 
 function get_current_state(resolve) {
+    console.log('eeeee',TOPIC)
     let d = new Promise(resolve => {
         cs_requests.push(resolve)
         client.publish(TOPIC + '/get', '')
@@ -54,7 +55,19 @@ function get_current_state(resolve) {
 
 function execute_commands(commands) {
     let payload = {}
+    let responsePayload = []
     for (let command of commands) {
+        let commandResponse = {
+            ids: [],
+            status:'SUCCESS',
+            states:{
+                online: true,
+            }
+        }
+        responsePayload.push(commandResponse)
+        for (let device of command.devices){
+            commandResponse.ids.push(device.id)
+        }
         for (let execution of command.execution) {
             let cmd = execution.command
             console.log(cmd)
@@ -71,16 +84,19 @@ function execute_commands(commands) {
             switch (cmd) {
                 case 'action.devices.commands.BrightnessAbsolute':
                     payload['brightness'] = execution.params.brightness
+                    commandResponse.states.brightness = execution.params.brightness
                     break
                 case 'action.devices.commands.ColorAbsolute':
                     payload['color'] = rgb2xy(execution.params.color.spectrumRGB)
+                    commandResponse.states.color = execution.params.color
                     break
                 case 'action.devices.commands.OnOff':
                     payload['state'] = execution.params.on ? 'ON' : 'OFF'
+                    commandResponse.states.on = execution.params.on
                     break
                 case "action.devices.commands.ColorLoop":
                     if (colorLoop == null) {
-                        colorLoop = setInterval(colorLoopHandler, 2000)
+                        colorLoop = setInterval(colorLoopHandler, 5000)
                     }
                     break
                 case "action.devices.commands.StopEffect":
@@ -94,11 +110,13 @@ function execute_commands(commands) {
     }
     if (Object.keys(payload).length > 0)
         client.publish(TOPIC + '/set', JSON.stringify(payload))
+    return responsePayload
 
 }
 
 client.on('connect', function () {
     client.subscribe(TOPIC, function (err) {
+        console.log('sub',TOPIC,err)
         if (!err) {
             client.publish('googlehome', 'Hello mqtt')
         }
@@ -153,10 +171,12 @@ function to_google(msg) {
 client.on('message', function (topic, message) {
     // message is Buffer
     let msg = message.toString()
+    console.log('ere',topic,msg)
     if (topic === TOPIC) {
         let cs = to_google(JSON.parse(msg))
         let send = cs_requests
         cs_requests = []
+
         for (let d of send)
             d(cs)
     }
