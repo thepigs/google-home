@@ -176,7 +176,7 @@ function to_google(msg, id) {
     }
     return {
         devices: {
-            id: data
+            [id]: data
         }
     }
 }
@@ -213,8 +213,10 @@ client.on('message', function (topic, message) {
         let send = a
         cs_requests[topic] = []
 
-        for (let d of send)
+        for (let d of send) {
+            console.log('send',cs)
             d(cs)
+        }
     }
 })
 
