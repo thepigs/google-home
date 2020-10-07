@@ -1,17 +1,17 @@
 // Import the appropriate service
 const {smarthome} = require('actions-on-google')
 const {Deferred} = require('./utils')
-const  {get_current_state,execute_commands} = require('./mqtt')
-
+const {get_current_state, execute_commands} = require('./mqtt')
+const {devices,mqttDevices} = require('./devices')
 // Create an app instance
 const app = smarthome()
 
 // Register handlers for Smart Home intents
 
 app.onExecute((body, headers) => {
-    console.log(body)
-    let responseCommands=[]
-    for (let input of body.inputs){
+    console.log(JSON.stringify(body))
+    let responseCommands = []
+    for (let input of body.inputs) {
         responseCommands.push(...execute_commands(input.payload.commands))
     }
     let d = {
@@ -22,12 +22,25 @@ app.onExecute((body, headers) => {
     return d;
 })
 
-function makePayload(request,payload){
+function makePayload(request, payload) {
 
 }
+
 app.onQuery((body, headers) => {
-    let d = get_current_state().then(value=>{
-        let r = { requestId: body.requestId,
+    console.log(JSON.stringify(body))
+    let devices = []
+    body.inputs.forEach(i=>i.payload.devices.forEach(d=>{
+        let device = mqttDevices[d.id]
+        if (device)
+            devices.push(device)
+    }))
+    console.log(devices,JSON.stringify(devices))
+    if (devices.length!=1){
+        console.error("devices",JSON.stringify(devices))
+    }
+    let d = get_current_state(devices[0]).then(value => {
+        let r = {
+            requestId: body.requestId,
             payload: value,
             status: 'SUCCESS'
         }
@@ -37,43 +50,15 @@ app.onQuery((body, headers) => {
 })
 
 app.onSync((body, headers) => {
-    return {
-        requestId: body.requestId,
-        payload: {
-            agentUserId: "1836.15267389",
-            devices: [
-                {
-                id: "456",
-                type: "action.devices.types.LIGHT",
-                traits: [
-                    "action.devices.traits.OnOff",
-                    "action.devices.traits.Brightness",
-                    "action.devices.traits.ColorSetting",
-                    "action.devices.traits.LightEffects",
-	            ],
-                name: {
-                    //     defaultNames: ["lights out inc. bulb A19 color hyperglow"],
-                    name: "Kitchen Light Bar",
-                    //    nicknames: ["reading lamp"]
-                },
-                willReportState: true,
-                roomHint: "Kitchen",
-                attributes: {
-                    colorModel: 'rgb',
-                    supportedEffects: ['colorLoop'],
-                },
-
-                deviceInfo: {
-                    manufacturer: "gina",
-                    model: "0",
-                    hwVersion: "0",
-                    swVersion: "0"
-                },
-            },
-            ]
+        return {
+            requestId: `${body.requestId}`,
+            payload: {
+                agentUserId: "1836.15267389",
+                devices: devices
+            }
         }
-    };
-})
+    }
+)
 
 const express = require('express')
 const bodyParser = require('body-parser')
