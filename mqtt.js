@@ -1,5 +1,5 @@
 var mqtt = require('mqtt')
-var client = mqtt.connect('mqtt://192.168.0.128')
+var client = mqtt.connect('mqtt://raspberrypi')
 var {Deferred} = require('./utils')
 let {mqttDevices} = require('./devices')
 
