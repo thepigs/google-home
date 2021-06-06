@@ -2,6 +2,7 @@ var mqtt = require('mqtt')
 var client = mqtt.connect('mqtt://raspberrypi')
 var {Deferred} = require('./utils')
 let {mqttDevices} = require('./devices')
+const colors = require('./colors')
 
 //
 // return {
@@ -27,7 +28,7 @@ let colorLoopIndex = 0;
 const STEPS = 30
 
 
-function colorLoopHandler() {
+function colorLoopHandler(mqttDevice) {
     if (colorLoopIndex >= (rainbow.length - 1) * STEPS)
         colorLoopIndex = 0
     let index = Math.floor(colorLoopIndex / STEPS)
@@ -43,7 +44,7 @@ function colorLoopHandler() {
 
     let col = (lerp(0) << 16) | (lerp(1) << 8) | lerp(2)
     let payload = {color: rgb2xy(col)}
-    client.publish(TOPIC + '/set', JSON.stringify(payload))
+    client.publish(mqttDevice.topic + '/set', JSON.stringify(payload))
     colorLoopIndex++
 }
 
@@ -53,6 +54,7 @@ function get_current_state(mqttDevice) {
         if (a == null)
             a = cs_requests[mqttDevice.topic] = []
         a.push(resolve)
+	console.log('qqq '+mqttDevice.topic + '/get')
         client.publish(mqttDevice.topic + '/get', '')
     })
     return d
@@ -103,7 +105,7 @@ function execute_commands(commands) {
                         break
                     case "action.devices.commands.ColorLoop":
                         if (colorLoop == null) {
-                            colorLoop = setInterval(colorLoopHandler, 5000)
+                            colorLoop = setInterval(()=>colorLoopHandler(mqttDevice), 5000)
                         }
                         break
                     case "action.devices.commands.StopEffect":
@@ -148,15 +150,15 @@ function rgb2xy(rgb) {
     let blue = rgb & 255
     let green = (rgb >> 8) & 255
     let red = (rgb >> 16) & 255
-    let X = red * 0.649926 + green * 0.103455 + blue * 0.197109;
-    let Y = red * 0.234327 + green * 0.743075 + blue * 0.022598;
-    let Z = red * 0.0000000 + green * 0.053077 + blue * 1.035763;
-
-    let x = X / (X + Y + Z);
-
-    let y = Y / (X + Y + Z);
-    return {x: x, y: y}
+    let xy = colors.rgb_to_cie(red,green,blue)
+ return {x: xy[0], y: xy[1]}
 }
+
+function xy2rgb(x,y){
+ let rgb = colors.cie_to_rgb(x,y)
+ return rgb[0] << 16 | rgb[1] << 8 | rgb[2]
+}
+
 
 function to_google(msg, id) {
     let data = {
@@ -166,12 +168,9 @@ function to_google(msg, id) {
     if (msg.brightness)
         data.brightness = msg.brightness
     if (msg.color) {
+	let rgb = xy2rgb(msg.color.x,msg.color.y)
         data.color = {
-            spectrumRGB: {
-                hue: msg.color.h,
-                saturation: msg.color.s,
-                value: msg.color.v
-            }
+            spectrumRGB: rgb
         }
     }
     return {
@@ -201,11 +200,11 @@ client.on('message', function (topic, message) {
     // message is Buffer
     let msg = message.toString()
 
+    console.log('ere', topic, msg)
     if (topic == 'zigbee2mqtt/bridge/config/devices') {
         check_devices(msg)
         return
     }
-    //  console.log('ere', topic, msg)
     let a = cs_requests[topic]
     if (a) {
         let mqttDevice = Object.entries(mqttDevices).find(e => e[1].topic == topic)
@@ -214,7 +213,7 @@ client.on('message', function (topic, message) {
         cs_requests[topic] = []
 
         for (let d of send) {
-            console.log('send',cs)
+            console.log('send',JSON.stringify(cs))
             d(cs)
         }
     }

@@ -9,16 +9,18 @@ const app = smarthome()
 // Register handlers for Smart Home intents
 
 app.onExecute((body, headers) => {
-    console.log(JSON.stringify(body))
+    console.log('execute',JSON.stringify(body))
     let responseCommands = []
     for (let input of body.inputs) {
         responseCommands.push(...execute_commands(input.payload.commands))
     }
     let d = {
         requestId: body.requestId,
-        commands: responseCommands
+        payload: { 
+		commands: responseCommands
+	}
     }
-    console.log(JSON.stringify(d))
+    console.log('execute_resp',JSON.stringify(d))
     return d;
 })
 
@@ -27,14 +29,14 @@ function makePayload(request, payload) {
 }
 
 app.onQuery((body, headers) => {
-    console.log(JSON.stringify(body))
+    console.log('query',JSON.stringify(body))
     let devices = []
     body.inputs.forEach(i=>i.payload.devices.forEach(d=>{
         let device = mqttDevices[d.id]
         if (device)
             devices.push(device)
     }))
-    console.log(devices,JSON.stringify(devices))
+    console.log('query_dev',devices,JSON.stringify(devices))
     if (devices.length!=1){
         console.error("devices",JSON.stringify(devices))
     }
@@ -44,6 +46,7 @@ app.onQuery((body, headers) => {
             payload: value,
             status: 'SUCCESS'
         }
+	console.log('query_resp',JSON.stringify(r))
         return r
     })
     return d
